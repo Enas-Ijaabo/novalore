@@ -1,0 +1,12 @@
+service: auth-service
+port: 8081
+
+dependencies:
+  postgres:
+    host: postgres
+    port: 5432
+    database: authdb
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiry: 24h

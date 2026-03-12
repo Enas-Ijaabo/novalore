@@ -1,0 +1,10 @@
+Engineering Meeting Notes
+
+Decision: PaymentService will use Stripe as the payment processing provider.
+All payment-related API calls will go through Stripe's SDK.
+
+Decision: AuthService and PaymentService will both connect to a shared PostgreSQL instance.
+Each service will use a separate database schema to maintain isolation.
+
+Decision: The API Gateway will handle all routing. No service should be called directly
+from outside the system. All external traffic routes through the API Gateway.

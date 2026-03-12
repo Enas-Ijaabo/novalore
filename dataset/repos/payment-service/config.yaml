@@ -1,0 +1,10 @@
+service: payment-service
+port: 8082
+
+dependencies:
+  postgres:
+    host: postgres
+    port: 5432
+    database: paymentdb
+  stripe:
+    api_key: ${STRIPE_API_KEY}

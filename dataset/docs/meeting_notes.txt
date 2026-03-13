@@ -1,10 +1,18 @@
-Engineering Meeting Notes
+Engineering Decisions — Q1
 
-Decision: PaymentService will use Stripe as the payment processing provider.
-All payment-related API calls will go through Stripe's SDK.
+Payment limits:
+The team decided the minimum charge amount is $0.50 to avoid Stripe fees on micro-transactions.
+The maximum single charge is $9,999.99 to limit fraud exposure.
+Refunds are only accepted within 30 days of the original transaction.
 
-Decision: AuthService and PaymentService will both connect to a shared PostgreSQL instance.
-Each service will use a separate database schema to maintain isolation.
+Reliability:
+PaymentService will retry failed Stripe calls up to 3 times with a 2-second delay between attempts.
+If all 3 retries fail, the charge is marked as failed and the user is notified.
 
-Decision: The API Gateway will handle all routing. No service should be called directly
-from outside the system. All external traffic routes through the API Gateway.
+Rate limiting:
+The API Gateway enforces a limit of 100 requests per minute per IP address.
+Requests exceeding the limit receive a 429 response.
+
+Data retention:
+Transaction records are retained indefinitely for accounting purposes.
+Revoked tokens are purged from the revoked_tokens table after 30 days.

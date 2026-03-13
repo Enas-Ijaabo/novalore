@@ -1,10 +1,21 @@
 service: payment-service
 port: 8082
 
-dependencies:
-  postgres:
-    host: postgres
-    port: 5432
-    database: paymentdb
-  stripe:
-    api_key: ${STRIPE_API_KEY}
+database:
+  host: postgres
+  port: 5432
+  name: paymentdb
+  schema: payments
+  max_connections: 10
+
+stripe:
+  api_key: ${STRIPE_API_KEY}
+  timeout: 10s
+  api_version: "2023-10-16"
+
+limits:
+  min_charge_cents: 50
+  max_charge_cents: 999999
+  max_retries: 3
+  retry_delay: 2s
+  refund_window_days: 30

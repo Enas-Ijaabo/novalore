@@ -1,12 +1,20 @@
 service: auth-service
 port: 8081
 
-dependencies:
-  postgres:
-    host: postgres
-    port: 5432
-    database: authdb
+database:
+  host: postgres
+  port: 5432
+  name: authdb
+  schema: auth
+  max_connections: 20
 
 jwt:
   secret: ${JWT_SECRET}
   expiry: 24h
+  algorithm: HS256
+
+security:
+  max_login_attempts: 5
+  lockout_duration: 15m
+  token_refresh_window: 30m
+  password_min_length: 8

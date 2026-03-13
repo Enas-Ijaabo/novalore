@@ -1,0 +1,14 @@
+AuthService Design
+
+AuthService handles all user authentication for the platform.
+
+Token lifecycle:
+Tokens are valid for 24 hours from the time of issue.
+Tokens can only be refreshed within the last 30 minutes before expiry.
+Logout invalidates a token immediately by inserting it into the revoked_tokens table.
+The revoked_tokens table is checked on every validation request.
+
+Security policy:
+After 5 consecutive failed login attempts, the account is locked.
+Locked accounts remain locked for 15 minutes before automatically unlocking.
+Passwords must be at least 8 characters.

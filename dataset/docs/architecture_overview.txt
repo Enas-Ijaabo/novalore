@@ -1,0 +1,12 @@
+System Architecture
+
+The platform consists of three services: AuthService, PaymentService, and API Gateway.
+
+The API Gateway is the single entry point. All external traffic routes through it.
+Services are not accessible directly from outside the cluster.
+
+AuthService runs on port 8081 and connects to the auth schema in PostgreSQL.
+PaymentService runs on port 8082 and connects to the payments schema in PostgreSQL.
+Each service uses an isolated schema — they do not share tables.
+
+Both services connect to the same PostgreSQL instance but maintain strict schema separation.

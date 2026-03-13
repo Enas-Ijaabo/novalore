@@ -45,6 +45,7 @@ func main() {
 	http.HandleFunc("/api/health", srv.health)
 	http.HandleFunc("/api/ingest", srv.ingest)
 	http.HandleFunc("/api/facts", srv.facts)
+	http.HandleFunc("/api/query", srv.query)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -124,4 +125,59 @@ func (s *server) facts(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(facts)
+}
+
+func (s *server) query(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	ctx := r.Context()
+
+	var req struct {
+		Q string `json:"q"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Q == "" {
+		http.Error(w, "body must be {\"q\": \"...\"}", http.StatusBadRequest)
+		return
+	}
+
+	// 1. Embed the question
+	emb, err := s.nova.Embed(ctx, req.Q)
+	if err != nil {
+		log.Printf("query embed: %v", err)
+		http.Error(w, "embed failed", http.StatusInternalServerError)
+		return
+	}
+
+	// 2. Vector search — top 10 facts
+	facts, err := s.chroma.Query(ctx, emb, 10)
+	if err != nil {
+		log.Printf("query search: %v", err)
+		http.Error(w, "search failed", http.StatusInternalServerError)
+		return
+	}
+
+	// 3. Nova synthesis
+	answer, err := s.nova.Synthesize(ctx, req.Q, facts)
+	if err != nil {
+		log.Printf("query synthesize: %v", err)
+		http.Error(w, "synthesis failed", http.StatusInternalServerError)
+		return
+	}
+
+	type source struct {
+		Text   string `json:"text"`
+		Source string `json:"source"`
+	}
+	sources := make([]source, len(facts))
+	for i, f := range facts {
+		sources[i] = source{Text: f.Text, Source: f.Source}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"answer":  answer,
+		"sources": sources,
+	})
 }

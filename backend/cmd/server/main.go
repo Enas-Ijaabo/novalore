@@ -43,7 +43,7 @@ func main() {
 
 	log.Printf("Extracted %d facts total", len(allFacts))
 	for _, f := range allFacts {
-		log.Printf("  %s | %s | %s  [%s]", f.Subject, f.Relation, f.Object, f.Source)
+		log.Printf("  [%s] %s  [%s]", f.Type, f.Text, f.Source)
 	}
 
 	port := os.Getenv("PORT")

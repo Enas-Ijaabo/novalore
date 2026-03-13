@@ -10,44 +10,47 @@ import (
 	"github.com/enas/orglens/internal/pipeline"
 )
 
-var validRelations = map[string]bool{
-	"uses": true, "calls": true, "writes_to": true, "reads_from": true,
-	"depends_on": true, "handles": true, "stores": true, "routes_to": true,
-	"expires_after": true, "communicates_with": true,
+var validTypes = map[string]bool{
+	"business_rule": true,
+	"architecture":  true,
+	"data_rule":     true,
+	"behavior":      true,
+	"constraint":    true,
+	"decision":      true,
 }
 
-const extractionPrompt = `You are a software architect extracting structured knowledge from engineering documents and source code.
+const extractionPrompt = `You are an expert software engineer analyzing source code and documentation.
 
-Extract ALL factual relationships as subject-relation-object triples.
+Your job is to extract hidden knowledge statements — business rules, domain constraints,
+system behaviors, architectural decisions — that are encoded in the text below.
 
-Use ONLY these relations:
-uses, calls, writes_to, reads_from, depends_on, handles,
-stores, routes_to, expires_after, communicates_with
+Focus on knowledge that would be hard to discover without reading the code carefully:
+- Business rules: "Free tier users are limited to 3 projects"
+- Domain constraints: "Orders require a minimum charge of $10"
+- System behaviors: "JWT tokens expire after 24 hours"
+- Architectural decisions: "All external traffic routes through the API Gateway"
+- Data rules: "Revoked tokens are stored in the revoked_tokens table"
+- Retry/failure policies: "Payments are retried up to 3 times before failing"
 
 Rules:
-- Normalize entity names to PascalCase service names or kebab-case package names
-- Only extract explicitly stated facts, never infer
-- One triple per factual claim
-- For code: import statements → depends_on, function calls → calls, DB writes → writes_to, DB reads → reads_from
+- Write each statement as a clear, complete English sentence
+- Be specific — include numbers, names, and conditions when present
+- Do not invent facts that are not explicitly in the text
+- Skip trivial facts (imports, variable names, boilerplate)
 
-Example 1 (prose):
-Text: "UserService stores session data in Redis. It reads user profiles from PostgreSQL."
-Output:
+Output format:
 [
-  {"subject": "UserService", "relation": "stores", "object": "Redis"},
-  {"subject": "UserService", "relation": "reads_from", "object": "PostgreSQL"}
+  {
+    "fact": "JWT tokens expire after 24 hours",
+    "type": "business_rule"
+  },
+  {
+    "fact": "PaymentService uses Stripe for payment processing",
+    "type": "architecture"
+  }
 ]
 
-Example 2 (code):
-Text: ` + "`" + `import "github.com/org/mailer"
-func (s *NotificationService) Notify(evt Event) {
-    s.mailer.Send(evt.Email)
-}` + "`" + `
-Output:
-[
-  {"subject": "NotificationService", "relation": "depends_on", "object": "mailer"},
-  {"subject": "NotificationService", "relation": "calls", "object": "mailer.Send"}
-]
+Valid types: business_rule, architecture, data_rule, behavior, constraint, decision
 
 Now extract from this text:
 {text}
@@ -68,33 +71,37 @@ func (c *Client) ExtractFacts(ctx context.Context, text, source string) ([]pipel
 		return []pipeline.Fact{}, nil
 	}
 
-	var triples []struct {
-		Subject  string `json:"subject"`
-		Relation string `json:"relation"`
-		Object   string `json:"object"`
+	var items []struct {
+		Fact string `json:"fact"`
+		Type string `json:"type"`
 	}
-	if err := json.Unmarshal([]byte(raw), &triples); err != nil {
+	if err := json.Unmarshal([]byte(raw), &items); err != nil {
 		return nil, fmt.Errorf("parse facts json: %w\nraw: %s", err, raw)
 	}
 
-	facts := make([]pipeline.Fact, 0, len(triples))
-	for _, t := range triples {
-		t.Subject = strings.TrimSpace(t.Subject)
-		t.Relation = strings.TrimSpace(t.Relation)
-		t.Object = strings.TrimSpace(t.Object)
+	seen := map[string]bool{}
+	facts := make([]pipeline.Fact, 0, len(items))
+	for _, item := range items {
+		item.Fact = strings.TrimSpace(item.Fact)
+		item.Type = strings.TrimSpace(item.Type)
 
-		if t.Subject == "" || t.Relation == "" || t.Object == "" {
+		if len(item.Fact) < 10 || len(item.Fact) > 200 {
 			continue
 		}
-		if !validRelations[t.Relation] {
+		if seen[item.Fact] {
 			continue
 		}
+		seen[item.Fact] = true
+
+		factType := item.Type
+		if !validTypes[factType] {
+			factType = "architecture"
+		}
+
 		facts = append(facts, pipeline.Fact{
-			Subject:  t.Subject,
-			Relation: t.Relation,
-			Object:   t.Object,
-			Text:     t.Subject + " " + t.Relation + " " + t.Object,
-			Source:   source,
+			Text:   item.Fact,
+			Type:   factType,
+			Source: source,
 		})
 	}
 	return facts, nil

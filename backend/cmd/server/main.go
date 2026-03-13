@@ -42,10 +42,10 @@ func main() {
 		datasetDir: datasetDir,
 	}
 
-	http.HandleFunc("/api/health", srv.health)
-	http.HandleFunc("/api/ingest", srv.ingest)
-	http.HandleFunc("/api/facts", srv.facts)
-	http.HandleFunc("/api/query", srv.query)
+	http.HandleFunc("/api/health", cors(srv.health))
+	http.HandleFunc("/api/ingest", cors(srv.ingest))
+	http.HandleFunc("/api/facts", cors(srv.facts))
+	http.HandleFunc("/api/query", cors(srv.query))
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -54,6 +54,19 @@ func main() {
 	log.Printf("OrgLens backend listening on :%s", port)
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatal(err)
+	}
+}
+
+func cors(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next(w, r)
 	}
 }
 

@@ -1,0 +1,11 @@
+# Node
+frontend/node_modules
+frontend/.next
+frontend/out
+
+# Go
+backend/bin
+
+# Misc
+.env
+.git

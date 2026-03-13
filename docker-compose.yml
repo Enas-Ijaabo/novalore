@@ -3,6 +3,11 @@ services:
     image: chromadb/chroma:0.4.24
     ports:
       - "8001:8000"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/heartbeat')"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
 
   backend:
     build:
@@ -10,13 +15,12 @@ services:
       dockerfile: Dockerfile.backend
     ports:
       - "8080:8080"
+    env_file: .env
     environment:
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_REGION=us-east-1
-      - CHROMA_URL=http://chromadb:8001
+      - CHROMA_URL=http://chromadb:8000
     depends_on:
-      - chromadb
+      chromadb:
+        condition: service_healthy
 
   frontend:
     build:

@@ -18,7 +18,7 @@ type Client struct {
 }
 
 func NewClient(ctx context.Context) (*Client, error) {
-	region := os.Getenv("AWS_REGION")
+	region := os.Getenv("BEDROCK_REGION")
 	if region == "" {
 		region = "us-east-1"
 	}

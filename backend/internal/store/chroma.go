@@ -1,0 +1,204 @@
+package store
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+
+	"github.com/enas/orglens/internal/pipeline"
+	"github.com/google/uuid"
+)
+
+const collectionName = "orglens_knowledge"
+
+type Client struct {
+	base       string
+	httpClient *http.Client
+}
+
+func NewClient() *Client {
+	base := os.Getenv("CHROMA_URL")
+	if base == "" {
+		base = "http://localhost:8001"
+	}
+	return &Client{base: base, httpClient: &http.Client{}}
+}
+
+// EnsureCollection creates the collection if it does not already exist.
+func (c *Client) EnsureCollection(ctx context.Context) error {
+	body, _ := json.Marshal(map[string]any{
+		"name": collectionName,
+	})
+	resp, err := c.post(ctx, "/api/v1/collections", body)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	// 200 = created, 409 = already exists — both are fine
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusConflict {
+		return fmt.Errorf("ensure collection: unexpected status %d", resp.StatusCode)
+	}
+	return nil
+}
+
+// Add stores facts with their embeddings. IDs are generated if empty.
+func (c *Client) Add(ctx context.Context, facts []pipeline.Fact, embeddings [][]float64) error {
+	if len(facts) == 0 {
+		return nil
+	}
+
+	ids := make([]string, len(facts))
+	documents := make([]string, len(facts))
+	metadatas := make([]map[string]string, len(facts))
+
+	for i, f := range facts {
+		id := f.ID
+		if id == "" {
+			id = uuid.NewString()
+		}
+		ids[i] = id
+		documents[i] = f.Text
+		metadatas[i] = map[string]string{
+			"source": f.Source,
+			"type":   f.Type,
+		}
+	}
+
+	body, _ := json.Marshal(map[string]any{
+		"ids":        ids,
+		"documents":  documents,
+		"embeddings": embeddings,
+		"metadatas":  metadatas,
+	})
+
+	resp, err := c.post(ctx, "/api/v1/collections/"+collectionName+"/add", body)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("add: unexpected status %d", resp.StatusCode)
+	}
+	return nil
+}
+
+// Query returns the top n facts closest to the given embedding vector.
+func (c *Client) Query(ctx context.Context, embedding []float64, n int) ([]pipeline.Fact, error) {
+	body, _ := json.Marshal(map[string]any{
+		"query_embeddings": [][]float64{embedding},
+		"n_results":        n,
+		"include":          []string{"documents", "metadatas"},
+	})
+
+	resp, err := c.post(ctx, "/api/v1/collections/"+collectionName+"/query", body)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		IDs       [][]string            `json:"ids"`
+		Documents [][]string            `json:"documents"`
+		Metadatas [][]map[string]string `json:"metadatas"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("query decode: %w", err)
+	}
+
+	if len(result.IDs) == 0 {
+		return nil, nil
+	}
+
+	facts := make([]pipeline.Fact, len(result.IDs[0]))
+	for i, id := range result.IDs[0] {
+		facts[i] = pipeline.Fact{
+			ID:   id,
+			Text: result.Documents[0][i],
+		}
+		if len(result.Metadatas[0]) > i {
+			facts[i].Source = result.Metadatas[0][i]["source"]
+			facts[i].Type = result.Metadatas[0][i]["type"]
+		}
+	}
+	return facts, nil
+}
+
+// GetAll returns every fact stored in the collection.
+func (c *Client) GetAll(ctx context.Context) ([]pipeline.Fact, error) {
+	body, _ := json.Marshal(map[string]any{
+		"include": []string{"documents", "metadatas"},
+	})
+
+	resp, err := c.post(ctx, "/api/v1/collections/"+collectionName+"/get", body)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		IDs       []string            `json:"ids"`
+		Documents []string            `json:"documents"`
+		Metadatas []map[string]string `json:"metadatas"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("getall decode: %w", err)
+	}
+
+	facts := make([]pipeline.Fact, len(result.IDs))
+	for i, id := range result.IDs {
+		facts[i] = pipeline.Fact{
+			ID:   id,
+			Text: result.Documents[i],
+		}
+		if i < len(result.Metadatas) {
+			facts[i].Source = result.Metadatas[i]["source"]
+			facts[i].Type = result.Metadatas[i]["type"]
+		}
+	}
+	return facts, nil
+}
+
+// Count returns the number of facts stored in the collection.
+func (c *Client) Count(ctx context.Context) (int, error) {
+	resp, err := c.httpClient.Get(c.base + "/api/v1/collections/" + collectionName + "/count")
+	if err != nil {
+		return 0, fmt.Errorf("count: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var n int
+	if err := json.NewDecoder(resp.Body).Decode(&n); err != nil {
+		return 0, fmt.Errorf("count decode: %w", err)
+	}
+	return n, nil
+}
+
+// Reset deletes and recreates the collection.
+func (c *Client) Reset(ctx context.Context) error {
+	req, _ := http.NewRequestWithContext(ctx, http.MethodDelete,
+		c.base+"/api/v1/collections/"+collectionName, nil)
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("reset delete: %w", err)
+	}
+	resp.Body.Close()
+	// 404 is fine — collection didn't exist
+	return c.EnsureCollection(ctx)
+}
+
+func (c *Client) post(ctx context.Context, path string, body []byte) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
+		c.base+path, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("chroma %s: %w", path, err)
+	}
+	return resp, nil
+}

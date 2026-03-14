@@ -4,6 +4,6 @@ import IngestTab from '../components/IngestTab'
 export const dynamic = 'force-dynamic'
 
 export default async function IngestPage() {
-  const status = await getIngestStatus()
-  return <IngestTab initialStatus={status} />
+  const data = await getIngestStatus()
+  return <IngestTab initialData={data} />
 }

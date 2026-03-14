@@ -22,7 +22,10 @@ func NewClient(ctx context.Context) (*Client, error) {
 	if region == "" {
 		region = "us-east-1"
 	}
-	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region))
+	cfg, err := config.LoadDefaultConfig(ctx,
+		config.WithRegion(region),
+		config.WithRetryer(func() aws.Retryer { return aws.NopRetryer{} }),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("load aws config: %w", err)
 	}

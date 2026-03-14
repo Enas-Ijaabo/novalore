@@ -11,21 +11,28 @@ Built for the **Amazon Nova AI Hackathon 2026**.
 ## How it works
 
 ```
-Dataset (code + docs)
+Backend starts
         │
         ▼
-  Nova Lite extracts facts
+  Background goroutine walks dataset files one by one
+  For each file: extract → embed → store
+  Status written to ChromaDB metadata as it goes
+        │
+        ▼
+  Nova Lite extracts knowledge statements per file
   "JWT tokens expire after 24 hours [auth.go]"
         │
         ▼
-  Nova Embeddings (1024-dim vectors)
+  Nova Embeddings (1024-dim vectors, sequential, rate-limit-aware)
         │
         ▼
-  ChromaDB vector store
+  ChromaDB vector store (persistent volume)
         │
         ▼
   Query → vector search → Nova Lite synthesis → grounded answer
 ```
+
+Ingestion runs automatically on startup — no button click needed. The **Ingest** tab is a live monitor showing each file's status (`pending → extracting → indexing → done`). Use the **Re-analyze** button to re-trigger at any time.
 
 ---
 
@@ -53,7 +60,9 @@ cp .env.example .env
 docker compose up --build
 
 # 4. Open http://localhost:3000
-#    Click "Analyze Codebase" → then ask questions
+#    The Ingest tab shows live indexing progress (auto-starts on startup)
+#    Switch to Knowledge to browse extracted facts
+#    Switch to Ask to query the codebase in natural language
 ```
 
 ---
@@ -75,10 +84,13 @@ docker compose up --build
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/ingest` | Extract facts from dataset, embed, store |
-| `GET` | `/api/facts` | Return all stored knowledge statements |
+| `GET`  | `/api/ingest/status` | Per-file status `{running, total, files[{file, status, facts, updated_at}]}` |
+| `POST` | `/api/ingest` | Trigger re-analysis in background → `202 {status: "started"}` |
+| `GET`  | `/api/facts` | All stored knowledge statements |
 | `POST` | `/api/query` | `{"q": "..."}` → `{answer, sources}` |
-| `GET` | `/api/health` | Health check |
+| `GET`  | `/api/health` | Health check |
+
+File status values: `pending` → `extracting` → `indexing` → `done` / `error`
 
 ---
 

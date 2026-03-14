@@ -10,11 +10,20 @@ export interface Fact {
   Source: string
 }
 
+export type FileStatusState = 'pending' | 'extracting' | 'indexing' | 'done' | 'error'
+
 export interface FileStatus {
   file: string
-  ingested: boolean
-  ingested_at?: string
-  facts_count?: number
+  status: FileStatusState
+  facts?: number
+  error?: string
+  updated_at?: string
+}
+
+export interface IngestStatus {
+  running: boolean
+  total: number
+  files: FileStatus[]
 }
 
 export async function getFacts(): Promise<Fact[]> {
@@ -28,13 +37,13 @@ export async function getFacts(): Promise<Fact[]> {
   }
 }
 
-export async function getIngestStatus(): Promise<FileStatus[]> {
+export async function getIngestStatus(): Promise<IngestStatus> {
   try {
     const res = await fetch(`${BASE}/api/ingest/status`, { cache: 'no-store' })
-    if (!res.ok) return []
+    if (!res.ok) return { running: false, total: 0, files: [] }
     const data = await res.json()
-    return data ?? []
+    return data ?? { running: false, total: 0, files: [] }
   } catch {
-    return []
+    return { running: false, total: 0, files: [] }
   }
 }

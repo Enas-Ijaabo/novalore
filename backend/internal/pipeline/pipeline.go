@@ -14,6 +14,9 @@ var nonAlphanumRe = regexp.MustCompile(`[^a-z0-9\s]`)
 
 // normalizeText lowercases, strips punctuation, and collapses whitespace.
 // Used as a dedup key so near-identical facts with minor wording differences are collapsed.
+// NormalizeText is exported for cross-file dedup in the ingestion layer.
+func NormalizeText(s string) string { return normalizeText(s) }
+
 func normalizeText(s string) string {
 	s = strings.ToLower(s)
 	s = nonAlphanumRe.ReplaceAllString(s, "")
@@ -41,12 +44,16 @@ type fileResult struct {
 	facts  []Fact
 }
 
-// Run walks datasetDir, extracts facts from all files in parallel (up to 4 concurrent),
+// Run walks datasetDir, extracts facts from all files in parallel (up to 10 concurrent),
 // deduplicates, and calls onFileDone after each file completes (optional).
-func Run(ctx context.Context, datasetDir string, extract ExtractFunc, onFileDone func(string, int)) ([]Fact, error) {
+// If limit > 0, only the first limit files are processed.
+func Run(ctx context.Context, datasetDir string, extract ExtractFunc, onFileDone func(string, int), limit int) ([]Fact, error) {
 	files, err := WalkDataset(datasetDir)
 	if err != nil {
 		return nil, err
+	}
+	if limit > 0 && limit < len(files) {
+		files = files[:limit]
 	}
 
 	results := make([]fileResult, len(files))

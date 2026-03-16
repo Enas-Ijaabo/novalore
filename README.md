@@ -31,6 +31,10 @@ Drop in your codebase / docs
         │
         ▼
   Ask a question → vector search → Nova Lite synthesizes a grounded answer
+
+
+<img width="1364" height="1324" alt="image" src="https://github.com/user-attachments/assets/94f29f37-ee6d-4ad0-abe9-19d3ac17cb51" />
+
 ```
 
 Ingestion starts automatically on startup. The **Ingest** tab shows live per-file progress (`extracting → indexing → done`). Hit **Re-analyze** any time to re-index.

@@ -114,19 +114,15 @@ To index your own project: replace the contents of `dataset/` with your code and
 
 ## Verifying it works
 
-After `docker compose up --build` and opening http://localhost:3000:
-
-1. **Ingest tab** — indexing starts automatically. Watch files move from `extracting → indexing → done`. All files should reach `done` within a few minutes.
-
-2. **Knowledge tab** — facts appear grouped by type (business rules, behaviors, constraints, etc.). Use the search bar or type filter to explore.
-
-3. **Ask tab** — try these sample queries:
+1. **Credentials first** — copy `.env.example` to `.env`, set `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`, then run `docker compose up --build` so the backend can call Bedrock.
+2. **Watch ingest** — open http://localhost:3000/ingest. Indexing starts automatically; watch files move from `extracting → indexing → done`. All files should reach `done` within a few minutes.
+3. **Browse knowledge** — head to `/knowledge`. Facts appear grouped by type (business rules, behaviors, constraints, etc.). Use the search bar or type filter to explore.
+4. **Ask questions** — go to `/ask` and try:
    - *"How does authentication work?"*
    - *"What are the payment limits?"*
    - *"How is traffic routed between services?"*
    - Each answer should cite specific source files.
-
-4. **API smoke test:**
+5. **API smoke test** — from another terminal:
 ```bash
 curl http://localhost:8080/api/health
 # → {"status":"ok"}

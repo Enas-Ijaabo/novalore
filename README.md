@@ -1,8 +1,10 @@
 # NovaLore
 
-**Codebase knowledge, instantly queryable.**
+**The knowledge hidden in your code, instantly queryable.**
 
-NovaLore ingests your source code and docs, uses Amazon Nova to extract factual knowledge statements, stores them as embeddings in ChromaDB, and lets you ask natural-language questions answered with grounded citations.
+Drop in any codebase or doc folder. NovaLore uses Amazon Nova to extract factual knowledge statements from every file, stores them as embeddings, and lets you ask natural-language questions — answered with grounded citations pointing back to the source.
+
+No manual documentation. No hallucinations. Just your code, made searchable.
 
 Built for the **Amazon Nova AI Hackathon 2026**.
 
@@ -11,36 +13,31 @@ Built for the **Amazon Nova AI Hackathon 2026**.
 ## How it works
 
 ```
-Backend starts
+Drop in your codebase / docs
         │
         ▼
-  Background goroutine walks dataset files one by one
-  For each file: extract → embed → store
-  Status written to ChromaDB metadata as it goes
+  Nova Lite reads each file and extracts factual knowledge statements
+  "Drone assignment uses MySQL spatial indexing to find the nearest idle drone"
         │
         ▼
-  Nova Lite extracts knowledge statements per file
-  "JWT tokens expire after 24 hours [auth.go]"
+  Nova Multimodal Embeddings converts each fact to a 1024-dim vector
         │
         ▼
-  Nova Embeddings (1024-dim vectors, sequential, rate-limit-aware)
+  ChromaDB stores facts + embeddings (persistent volume)
         │
         ▼
-  ChromaDB vector store (persistent volume)
-        │
-        ▼
-  Query → vector search → Nova Lite synthesis → grounded answer
+  Ask a question → vector search → Nova Lite synthesizes a grounded answer
 ```
 
-Ingestion runs automatically on startup — no button click needed. The **Ingest** tab is a live monitor showing each file's status (`pending → extracting → indexing → done`). Use the **Re-analyze** button to re-trigger at any time.
+Ingestion starts automatically on startup. The **Ingest** tab shows live per-file progress (`extracting → indexing → done`). Hit **Re-analyze** any time to re-index.
 
 ---
 
 ## Prerequisites
 
 - Docker & Docker Compose
-- AWS credentials with Bedrock model access enabled in **us-east-1**
-  - `amazon.nova-lite-v1:0` — fact extraction + synthesis
+- AWS credentials with Bedrock model access in **us-east-1**
+  - `amazon.nova-lite-v1:0` — fact extraction + answer synthesis
   - `amazon.nova-2-multimodal-embeddings-v1:0` — embeddings
 
 ---
@@ -49,21 +46,20 @@ Ingestion runs automatically on startup — no button click needed. The **Ingest
 
 ```bash
 # 1. Clone
-git clone https://github.com/enas/novalore
-cd novalore
+git clone https://github.com/enas/orgLens
+cd orgLens
 
-# 2. Create .env from the example and fill in your AWS credentials
+# 2. Set up credentials
 cp .env.example .env
-# edit .env
+# Fill in AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY in .env
 
 # 3. Start everything
 docker compose up --build
 
 # 4. Open http://localhost:3000
-#    The Ingest tab shows live indexing progress (auto-starts on startup)
-#    Switch to Knowledge to browse extracted facts
-#    Switch to Ask to query the codebase in natural language
 ```
+
+The Ingest tab auto-starts indexing on startup. Switch to **Knowledge** to browse extracted facts, or **Ask** to query in natural language.
 
 ---
 
@@ -72,11 +68,11 @@ docker compose up --build
 | Component | Tech |
 |---|---|
 | Backend API | Go, net/http |
-| LLM extraction + synthesis | Amazon Nova Lite (Bedrock) |
+| Fact extraction + synthesis | Amazon Nova Lite (`us.amazon.nova-lite-v1:0`) |
 | Embeddings | Amazon Nova Multimodal Embeddings (1024-dim) |
 | Vector store | ChromaDB 0.4.24 |
-| Frontend | Next.js 16 + Tailwind CSS |
-| Container orchestration | Docker Compose |
+| Frontend | Next.js + Tailwind CSS |
+| Orchestration | Docker Compose |
 
 ---
 
@@ -84,33 +80,25 @@ docker compose up --build
 
 | Method | Path | Description |
 |---|---|---|
-| `GET`  | `/api/ingest/status` | Per-file status `{running, total, files[{file, status, facts, updated_at}]}` |
-| `POST` | `/api/ingest` | Trigger re-analysis in background → `202 {status: "started"}` |
-| `GET`  | `/api/facts` | All stored knowledge statements |
+| `GET`  | `/api/ingest/status` | Per-file status `{running, total, files[]}` |
+| `POST` | `/api/ingest` | Trigger re-analysis → `202` |
+| `GET`  | `/api/facts` | All extracted knowledge statements |
 | `POST` | `/api/query` | `{"q": "..."}` → `{answer, sources}` |
 | `GET`  | `/api/health` | Health check |
-
-File status values: `pending` → `extracting` → `indexing` → `done` / `error`
 
 ---
 
 ## Dataset
 
-The bundled dataset lives in `dataset/` and includes simulated services and docs:
+The bundled demo dataset is a drone delivery management system — a real Go backend with routes, models, use cases, and infrastructure code.
 
 ```
 dataset/
-  docs/
-    architecture_overview.txt
-    auth_design_doc.txt
-    meeting_notes.txt
   repos/
-    auth-service/
-    payment-service/
-    api-gateway/
+    drone-delivery-management/
 ```
 
-Swap in your own codebase by replacing the contents of `dataset/` before running ingest.
+To use your own codebase: replace the contents of `dataset/` and hit **Re-analyze**.
 
 ---
 
@@ -120,12 +108,11 @@ Swap in your own codebase by replacing the contents of `dataset/` before running
 # Terminal 1 — ChromaDB
 docker run -p 8001:8000 chromadb/chroma:0.4.24
 
-# Terminal 2 — Backend (reads .env automatically via direnv, or set vars inline)
+# Terminal 2 — Backend
 cd backend
 export $(grep -v '^#' ../.env | xargs) && go run ./cmd/server
 
 # Terminal 3 — Frontend
 cd frontend
-npm install
-npm run dev
+npm install && npm run dev
 ```

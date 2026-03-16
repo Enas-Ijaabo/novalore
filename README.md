@@ -8,6 +8,10 @@ No manual documentation. No hallucinations. Just your code, made searchable.
 
 Built for the **Amazon Nova AI Hackathon 2026**.
 
+### Why NovaLore?
+
+Small teams and solo developers accumulate knowledge in code, configs, and docs — but that knowledge is buried and unsearchable. Onboarding a new engineer, revisiting a service after months, or answering "how does X work?" means grepping through files hoping to find the right one. NovaLore extracts that knowledge once and makes it queryable forever, grounded in citations so you can always trace an answer back to its source.
+
 ---
 
 ## How it works
@@ -17,7 +21,7 @@ Drop in your codebase / docs
         │
         ▼
   Nova Lite reads each file and extracts factual knowledge statements
-  "Drone assignment uses MySQL spatial indexing to find the nearest idle drone"
+  "Auth service rotates JWT secrets every 24 hours [auth.go]"
         │
         ▼
   Nova Multimodal Embeddings converts each fact to a 1024-dim vector
@@ -46,8 +50,8 @@ Ingestion starts automatically on startup. The **Ingest** tab shows live per-fil
 
 ```bash
 # 1. Clone
-git clone https://github.com/enas/orgLens
-cd orgLens
+git clone https://github.com/enas/novalore
+cd novalore
 
 # 2. Set up credentials
 cp .env.example .env
@@ -68,10 +72,10 @@ The Ingest tab auto-starts indexing on startup. Switch to **Knowledge** to brows
 | Component | Tech |
 |---|---|
 | Backend API | Go, net/http |
-| Fact extraction + synthesis | Amazon Nova Lite (`us.amazon.nova-lite-v1:0`) |
+| Fact extraction + synthesis | Amazon Nova Lite (`amazon.nova-lite-v1:0`) |
 | Embeddings | Amazon Nova Multimodal Embeddings (1024-dim) |
 | Vector store | ChromaDB 0.4.24 |
-| Frontend | Next.js + Tailwind CSS |
+| Frontend | Next.js App Router + Tailwind CSS |
 | Orchestration | Docker Compose |
 
 ---
@@ -90,15 +94,51 @@ The Ingest tab auto-starts indexing on startup. Switch to **Knowledge** to brows
 
 ## Dataset
 
-The bundled demo dataset is a drone delivery management system — a real Go backend with routes, models, use cases, and infrastructure code.
+The bundled dataset is a sample multi-service backend:
 
 ```
 dataset/
+  docs/
+    architecture_overview.txt
+    auth_design.txt
+    meeting_notes.txt
   repos/
-    drone-delivery-management/
+    auth-service/
+    payment-service/
+    api-gateway/
 ```
 
-To use your own codebase: replace the contents of `dataset/` and hit **Re-analyze**.
+To index your own project: replace the contents of `dataset/` with your code and docs, then hit **Re-analyze**. NovaLore picks up `.go`, `.py`, `.ts`, `.js`, `.md`, `.txt`, `.yaml`, `.toml`, and `.json` files up to 50 KB each, and skips `node_modules`, `vendor`, `.git`, and `build` directories automatically.
+
+---
+
+## Verifying it works
+
+After `docker compose up --build` and opening http://localhost:3000:
+
+1. **Ingest tab** — indexing starts automatically. Watch files move from `extracting → indexing → done`. All files should reach `done` within a few minutes.
+
+2. **Knowledge tab** — facts appear grouped by type (business rules, behaviors, constraints, etc.). Use the search bar or type filter to explore.
+
+3. **Ask tab** — try these sample queries:
+   - *"How does authentication work?"*
+   - *"What are the payment limits?"*
+   - *"How is traffic routed between services?"*
+   - Each answer should cite specific source files.
+
+4. **API smoke test:**
+```bash
+curl http://localhost:8080/api/health
+# → {"status":"ok"}
+
+curl http://localhost:8080/api/facts | python3 -m json.tool | head -20
+# → JSON array of extracted knowledge statements
+
+curl -X POST http://localhost:8080/api/query \
+  -H 'Content-Type: application/json' \
+  -d '{"q": "how does authentication work?"}' | python3 -m json.tool
+# → {"answer": "...", "sources": [...]}
+```
 
 ---
 

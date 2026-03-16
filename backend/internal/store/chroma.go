@@ -328,6 +328,38 @@ func (c *Client) GetAllMeta(ctx context.Context) ([]FileMeta, error) {
 	return metas, nil
 }
 
+// DeleteBySource removes all facts whose metadata source equals the given value.
+func (c *Client) DeleteBySource(ctx context.Context, source string) error {
+	body, _ := json.Marshal(map[string]any{
+		"where": map[string]any{"source": map[string]any{"$eq": source}},
+	})
+	resp, err := c.post(ctx, c.colPath("/delete"), body)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("delete by source: status %d: %s", resp.StatusCode, string(b))
+	}
+	return nil
+}
+
+// DeleteFileMeta removes the meta record for a single file.
+func (c *Client) DeleteFileMeta(ctx context.Context, file string) error {
+	body, _ := json.Marshal(map[string]any{"ids": []string{file}})
+	resp, err := c.post(ctx, c.metaColPath("/delete"), body)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("delete file meta: status %d: %s", resp.StatusCode, string(b))
+	}
+	return nil
+}
+
 // ResetMeta deletes and recreates the orglens_meta collection.
 func (c *Client) ResetMeta(ctx context.Context) error {
 	req, _ := http.NewRequestWithContext(ctx, http.MethodDelete,

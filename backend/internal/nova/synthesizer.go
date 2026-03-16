@@ -3,7 +3,6 @@ package nova
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/enas/orglens/internal/pipeline"
@@ -13,18 +12,14 @@ const maxSynthesisFacts = 10
 
 const synthesisPrompt = `You are a senior software engineer answering questions about a codebase.
 
-You have been given a set of knowledge statements extracted directly from the source code and documentation.
+You have been given knowledge statements extracted from the source code and documentation.
 
 Knowledge statements:
 {facts}
 
 Question: {question}
 
-Rules:
-- Base your answer strictly on the provided knowledge statements.
-- Do not infer or add information not present in the statements.
-- Every claim must include a source citation in brackets, e.g. [auth.go].
-- If the statements do not contain enough information to answer, say so explicitly.`
+Answer directly and concisely. Synthesize the relevant facts into a clear explanation — do not just list them. Skip implementation trivia (function names, status codes) unless they directly answer the question. Cite sources in brackets only for non-obvious claims, e.g. [order.go]. If the statements do not contain enough information, say so.`
 
 // Synthesize generates a natural language answer from a question and retrieved facts.
 func (c *Client) Synthesize(ctx context.Context, question string, facts []pipeline.Fact) (string, error) {
@@ -37,7 +32,13 @@ func (c *Client) Synthesize(ctx context.Context, question string, facts []pipeli
 
 	var sb strings.Builder
 	for i, f := range facts {
-		fmt.Fprintf(&sb, "%d. %s [%s]\n", i+1, f.Text, filepath.Base(f.Source))
+		src := f.Source
+	if after, ok := strings.CutPrefix(src, "repos/"); ok {
+		src = after
+	} else if after, ok := strings.CutPrefix(src, "docs/"); ok {
+		src = after
+	}
+	fmt.Fprintf(&sb, "%d. %s [%s]\n", i+1, f.Text, src)
 	}
 
 	prompt := strings.ReplaceAll(synthesisPrompt, "{facts}", sb.String())

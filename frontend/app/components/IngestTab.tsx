@@ -49,13 +49,17 @@ const STATUS_LABEL: Record<string, string> = {
 export default function IngestTab({ initialData }: Props) {
   const [data, setData] = useState<IngestStatus>(initialData)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const savedLastAnalysisRef = useRef<string | null>(null)
 
   const { running, total, files } = data
   const done      = files.filter(f => f.status === 'done').length
   const errCount  = files.filter(f => f.status === 'error').length
   const totalFacts = files.reduce((s, f) => s + (f.facts ?? 0), 0)
   const lastDone  = files.filter(f => f.status === 'done' && f.updated_at).map(f => new Date(f.updated_at!).getTime())
-  const lastAnalysis = lastDone.length ? timeAgo(new Date(Math.max(...lastDone)).toISOString()) : 'never'
+  const rawLastAnalysis = lastDone.length ? timeAgo(new Date(Math.max(...lastDone)).toISOString()) : 'never'
+  const lastAnalysis = running && rawLastAnalysis === 'never' && savedLastAnalysisRef.current
+    ? savedLastAnalysisRef.current
+    : rawLastAnalysis
   const allDone = total > 0 && done === total && !running
 
   const fetchStatus = async () => {
@@ -83,6 +87,7 @@ export default function IngestTab({ initialData }: Props) {
   }, [])
 
   const handleReanalyze = async () => {
+    savedLastAnalysisRef.current = rawLastAnalysis !== 'never' ? rawLastAnalysis : savedLastAnalysisRef.current
     try {
       const res = await fetch(`${API}/api/ingest`, { method: 'POST' })
       if (res.ok || res.status === 202) {

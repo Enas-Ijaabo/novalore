@@ -22,18 +22,25 @@ var validTypes = map[string]bool{
 const extractionPrompt = `You are an expert software engineer. Extract factual knowledge statements that are EXPLICITLY present in the text below.
 
 Extract only:
-- Business rules (e.g. account limits, approval thresholds)
-- Domain constraints (e.g. numeric limits, time windows, size caps)
-- System behaviors (e.g. what happens on timeout, how retries work)
-- Architectural decisions (e.g. which service owns what, how traffic flows)
-- Data rules (e.g. where data is stored, retention policies)
+- Business rules (e.g. who can do what, approval thresholds, role restrictions)
+- Domain constraints (e.g. numeric limits, time windows, valid state transitions)
+- System behaviors (e.g. what happens on timeout, retry logic, error conditions)
+- Architectural decisions (e.g. which service owns what, how traffic flows, technology choices)
+- Data rules (e.g. where data is stored, schema details, retention policies)
+
+SKIP — do not extract:
+- HTTP status code assertions (e.g. "returns 200", "status is 400", "expected status for X is 200")
+- Test setup/teardown boilerplate
+- Generic CRUD confirmations with no domain meaning (e.g. "creating X returns 201")
+- Import statements, variable declarations, and scaffolding with no business meaning
 
 Strict rules:
-- Only extract facts that are EXPLICITLY stated in the text — do not infer or invent
+- Only extract facts EXPLICITLY stated in the text — do not infer or invent
 - Every number, name, and condition must come directly from the text
-- Skip generic boilerplate, imports, variable declarations with no business meaning
+- Each fact must be self-contained: name the specific service, component, entity, state, or value involved so the fact is understandable without any surrounding context
+- Prefer facts that explain WHY or WHAT the system enforces, not just HTTP response codes
 - If the text contains no meaningful facts, return []
-- Do not use prior knowledge or information from other files. Only use the text provided.
+- Do not use prior knowledge from other files. Only use the text provided.
 
 Output: a JSON array of objects with "fact" (complete English sentence) and "type".
 Valid types: business_rule, architecture, data_rule, behavior, constraint, decision

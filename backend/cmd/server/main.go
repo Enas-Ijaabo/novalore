@@ -169,16 +169,6 @@ func (s *server) runIngest(ctx context.Context) {
 
 	log.Println("[ingest] starting")
 
-	// Reset ChromaDB collections
-	if err := s.chroma.Reset(ctx); err != nil {
-		log.Printf("[ingest] reset knowledge: %v", err)
-		return
-	}
-	if err := s.chroma.ResetMeta(ctx); err != nil {
-		log.Printf("[ingest] reset meta: %v", err)
-		return
-	}
-
 	files, err := pipeline.WalkDataset(s.datasetDir)
 	if err != nil {
 		log.Printf("[ingest] walk: %v", err)
@@ -193,6 +183,14 @@ func (s *server) runIngest(ctx context.Context) {
 
 		// Register file in status queue just before processing
 		s.job.add(relPath)
+
+		// Wipe existing facts for this file before re-extracting
+		if err := s.chroma.DeleteBySource(ctx, relPath); err != nil {
+			log.Printf("[ingest] delete source %s: %v", relPath, err)
+		}
+		if err := s.chroma.DeleteFileMeta(ctx, relPath); err != nil {
+			log.Printf("[ingest] delete meta %s: %v", relPath, err)
+		}
 
 		// --- Phase 1: Extract ---
 		log.Printf("[ingest] extracting: %s (%d/%d)", relPath, i+1, len(files))

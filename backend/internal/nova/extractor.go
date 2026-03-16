@@ -7,7 +7,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/enas/orglens/internal/pipeline"
+	"github.com/enas/novalore/internal/pipeline"
 )
 
 var validTypes = map[string]bool{

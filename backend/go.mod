@@ -1,4 +1,4 @@
-module github.com/enas/orglens
+module github.com/enas/novalore
 
 go 1.24.4
 

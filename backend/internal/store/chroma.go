@@ -11,12 +11,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/enas/orglens/internal/pipeline"
+	"github.com/enas/novalore/internal/pipeline"
 	"github.com/google/uuid"
 )
 
-const collectionName = "orglens_knowledge"
-const metaCollectionName = "orglens_meta"
+const collectionName = "novalore_knowledge"
+const metaCollectionName = "novalore_meta"
 
 type Client struct {
 	base             string

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/enas/orglens/internal/pipeline"
+	"github.com/enas/novalore/internal/pipeline"
 )
 
 const maxSynthesisFacts = 10

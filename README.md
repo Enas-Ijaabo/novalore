@@ -1,8 +1,8 @@
-# OrgLens
+# NovaLore
 
 **Codebase knowledge, instantly queryable.**
 
-OrgLens ingests your source code and docs, uses Amazon Nova to extract factual knowledge statements, stores them as embeddings in ChromaDB, and lets you ask natural-language questions answered with grounded citations.
+NovaLore ingests your source code and docs, uses Amazon Nova to extract factual knowledge statements, stores them as embeddings in ChromaDB, and lets you ask natural-language questions answered with grounded citations.
 
 Built for the **Amazon Nova AI Hackathon 2026**.
 
@@ -49,8 +49,8 @@ Ingestion runs automatically on startup — no button click needed. The **Ingest
 
 ```bash
 # 1. Clone
-git clone https://github.com/enas/orgLens
-cd orgLens
+git clone https://github.com/enas/novalore
+cd novalore
 
 # 2. Create .env from the example and fill in your AWS credentials
 cp .env.example .env

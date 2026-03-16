@@ -7,8 +7,8 @@ const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'OrgLens — Codebase knowledge, instantly queryable',
-  description: 'Extract, embed, and query knowledge from your codebase using Amazon Nova AI.',
+  title: 'NovaLore — The knowledge in your code, instantly queryable',
+  description: 'Extract and query knowledge from your codebase and docs using Amazon Nova AI.',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -15,8 +15,7 @@ export default function NavBar() {
   return (
     <header className="shrink-0 flex items-center gap-6 px-6 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-sm">
       <Link href="/ingest" className="flex items-center gap-2 py-4">
-        <span className="text-white font-semibold text-sm tracking-tight">OrgLens</span>
-        <span className="text-[10px] font-medium text-zinc-600 bg-zinc-800 px-1.5 py-0.5 rounded uppercase tracking-wider">Nova</span>
+        <span className="text-white font-semibold text-sm tracking-tight">NovaLore</span>
       </Link>
 
       <nav className="flex h-full">

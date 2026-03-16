@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/enas/orglens/internal/nova"
-	"github.com/enas/orglens/internal/pipeline"
-	"github.com/enas/orglens/internal/store"
+	"github.com/enas/novalore/internal/nova"
+	"github.com/enas/novalore/internal/pipeline"
+	"github.com/enas/novalore/internal/store"
 )
 
 // fileStatus tracks the ingestion state of a single dataset file.
@@ -127,7 +127,7 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
-	log.Printf("OrgLens backend listening on :%s", port)
+	log.Printf("NovaLore backend listening on :%s", port)
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatal(err)
 	}

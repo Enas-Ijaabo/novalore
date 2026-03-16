@@ -99,8 +99,8 @@ export default function AskTab({ hasFacts }: Props) {
               ) : (
                 <div className="flex-1 max-w-xl">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-[10px] font-bold text-white shrink-0">O</span>
-                    <span className="text-xs font-medium text-zinc-500">OrgLens</span>
+                    <span className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-[10px] font-bold text-white shrink-0">N</span>
+                    <span className="text-xs font-medium text-zinc-500">NovaLore</span>
                   </div>
                   <div className={`text-sm leading-relaxed whitespace-pre-wrap ${msg.error ? 'text-zinc-500 italic' : 'text-zinc-200'}`}>
                     {msg.content}
@@ -124,8 +124,8 @@ export default function AskTab({ hasFacts }: Props) {
             <div className="flex justify-start">
               <div className="flex-1 max-w-xl">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-[10px] font-bold text-white shrink-0">O</span>
-                  <span className="text-xs font-medium text-zinc-500">OrgLens</span>
+                  <span className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-[10px] font-bold text-white shrink-0">N</span>
+                  <span className="text-xs font-medium text-zinc-500">NovaLore</span>
                 </div>
                 <div className="flex gap-1.5 items-center h-5">
                   {[0, 150, 300].map(d => (
